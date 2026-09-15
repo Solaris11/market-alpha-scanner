@@ -208,16 +208,30 @@ def _severe_and_advisory(row: pd.Series, balanced_rr: float, config: V3Config) -
 def _where(row: pd.Series) -> dict[str, float | None]:
     entry_low, entry_high = _zone(row)
     stop = _level(row, "stop_loss", "invalidation_level")
-    target_1 = _level(row, "conservative_target", "take_profit_low")
-    target_2 = _level(row, "balanced_target")
-    target_3 = _level(row, "aggressive_target", "take_profit_high")
+    # The scanner's conservative / balanced / aggressive targets are derived
+    # independently and occasionally cross (a conservative target above the
+    # balanced one). A trader reads target_1..3 as a ladder, so publish them
+    # sorted, de-duplicated, and only where they sit above the entry zone.
+    raw = [
+        _level(row, "conservative_target", "take_profit_low"),
+        _level(row, "balanced_target"),
+        _level(row, "aggressive_target", "take_profit_high"),
+    ]
+    floor = entry_high if entry_high is not None else (entry_low if entry_low is not None else None)
+    ladder: list[float] = []
+    for value in sorted({round(item, 6) for item in raw if item is not None and item > 0}):
+        if floor is not None and value <= floor:
+            continue
+        ladder.append(value)
+    while len(ladder) < 3:
+        ladder.append(None)  # type: ignore[arg-type]
     return {
         "entry_low": entry_low,
         "entry_high": entry_high,
         "stop": stop,
-        "target_1": target_1,
-        "target_2": target_2,
-        "target_3": target_3,
+        "target_1": ladder[0],
+        "target_2": ladder[1],
+        "target_3": ladder[2],
     }
 
 

@@ -559,6 +559,61 @@ SELECT k, v FROM (
   UNION ALL SELECT 18,'completed <> live', count(*)::text FROM g WHERE relative_volume_score_completed ~ '^[0-9.]+$' AND relative_volume_score_completed <> relative_volume_score
 ) t ORDER BY o;
 """,
+    "v3_actionable": r"""
+\pset format unaligned
+\pset fieldsep '|'
+\pset footer off
+WITH r AS (SELECT id, created_at FROM scan_runs ORDER BY created_at DESC LIMIT 1),
+j AS (
+  SELECT to_char(r.created_at AT TIME ZONE 'UTC','MM-DD HH24:MI') AS run_at, ss.final_decision AS live, x.*
+  FROM scanner_signals ss JOIN r ON r.id=ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(
+    symbol text, sector text, price text, final_score text, confidence_score text, entry_status text,
+    setup_type text, composite_action text,
+    candidate_v3_decision text, candidate_v3_setup_type text, candidate_v3_path text,
+    candidate_v3_confidence text, candidate_v3_entry_low text, candidate_v3_entry_high text,
+    candidate_v3_stop text, candidate_v3_target_1 text, candidate_v3_target_2 text, candidate_v3_target_3 text,
+    candidate_v3_rr text, candidate_v3_actionability_rank text, candidate_v3_capital_rank_reason text,
+    candidate_v3_why text, candidate_v3_why_wait text, candidate_v3_confirmation text,
+    candidate_v3_invalidation text, candidate_v2_decision text)
+)
+SELECT candidate_v3_actionability_rank AS rank, symbol, coalesce(sector,'') AS sector,
+       candidate_v3_decision AS v3, candidate_v3_path AS path, candidate_v3_setup_type AS shape,
+       live AS current_says, coalesce(candidate_v2_decision,'') AS v2,
+       price, final_score AS score, candidate_v3_confidence AS conf, candidate_v3_rr AS rr,
+       candidate_v3_entry_low AS entry_low, candidate_v3_entry_high AS entry_high,
+       candidate_v3_stop AS stop, candidate_v3_target_1 AS t1, candidate_v3_target_2 AS t2, candidate_v3_target_3 AS t3,
+       candidate_v3_why AS why_now, candidate_v3_why_wait AS why_wait,
+       candidate_v3_confirmation AS confirmation, candidate_v3_capital_rank_reason AS rank_reason
+FROM j
+WHERE candidate_v3_decision IN ('ENTER','WAIT_PULLBACK')
+ORDER BY (candidate_v3_actionability_rank)::int;
+""",
+    "v3_debug": r"""
+WITH r AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1),
+j AS (
+  SELECT x.* FROM scanner_signals ss JOIN r ON r.id=ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(
+    symbol text, entry_status text, composite_action text, action text, final_decision text,
+    buy_zone text, entry_zone text, stop_loss text, invalidation_level text,
+    conservative_target text, balanced_target text, aggressive_target text, take_profit_zone text,
+    candidate_v3_decision text, candidate_v3_reason_codes jsonb, candidate_v3_entry_low text,
+    candidate_v3_stop text, candidate_v3_target_2 text, candidate_v3_setup_type text)
+)
+SELECT k, v FROM (
+  SELECT 1 AS o,'v3 '||coalesce(candidate_v3_decision,'null') AS k, count(*)::text AS v FROM j GROUP BY 2
+  UNION ALL SELECT 2,'code '||code, count(*)::text FROM j, LATERAL jsonb_array_elements_text(candidate_v3_reason_codes) AS code GROUP BY 2
+  UNION ALL SELECT 3,'buy_zone empty', count(*)::text FROM j WHERE coalesce(buy_zone,'')=''
+  UNION ALL SELECT 3,'buy_zone N/A', count(*)::text FROM j WHERE buy_zone='N/A'
+  UNION ALL SELECT 3,'stop_loss N/A or empty', count(*)::text FROM j WHERE coalesce(stop_loss,'') IN ('','N/A')
+  UNION ALL SELECT 3,'balanced_target N/A or empty', count(*)::text FROM j WHERE coalesce(balanced_target,'') IN ('','N/A')
+  UNION ALL SELECT 4,'sample '||symbol||' zone='||coalesce(buy_zone,'~')||' stop='||coalesce(stop_loss,'~')||' t2='||coalesce(balanced_target,'~')||' entry_status='||coalesce(entry_status,'~')||' act='||coalesce(composite_action,'~')||' v3='||coalesce(candidate_v3_decision,'~'), '1'
+      FROM (SELECT * FROM j WHERE composite_action IN ('BUY','STRONG BUY') AND entry_status IN ('GOOD ENTRY','BUY ZONE','NEAR ENTRY') LIMIT 6) q
+  UNION ALL SELECT 5,'v3_entry_low present', count(*)::text FROM j WHERE candidate_v3_entry_low ~ '^[0-9.]+$'
+  UNION ALL SELECT 5,'v3_stop present', count(*)::text FROM j WHERE candidate_v3_stop ~ '^[0-9.]+$'
+  UNION ALL SELECT 5,'v3 setup classified', count(*)::text FROM j WHERE candidate_v3_setup_type <> 'UNCLASSIFIED'
+) t ORDER BY o, k;
+""",
     "v3_preview": r"""
 WITH r AS (SELECT id, created_at FROM scan_runs ORDER BY created_at DESC LIMIT 4),
 j AS (

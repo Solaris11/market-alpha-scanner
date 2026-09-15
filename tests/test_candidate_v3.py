@@ -81,7 +81,9 @@ class EnterPathTests(unittest.TestCase):
         self.assertEqual(result["candidate_v3_entry_low"], 97.0)
         self.assertEqual(result["candidate_v3_entry_high"], 99.5)
         self.assertEqual(result["candidate_v3_stop"], 94.0)
+        self.assertEqual(result["candidate_v3_target_1"], 104.0)
         self.assertEqual(result["candidate_v3_target_2"], 108.0)
+        self.assertEqual(result["candidate_v3_target_3"], 115.0)
         self.assertEqual(result["candidate_v3_rr"], 2.0)
         self.assertEqual(result["candidate_v3_invalidation"], "94.00")
 
@@ -163,7 +165,9 @@ class LevelParsingTests(unittest.TestCase):
         self.assertEqual(result["candidate_v3_entry_low"], 318.58)
         self.assertEqual(result["candidate_v3_entry_high"], 323.99)
         self.assertEqual(result["candidate_v3_stop"], 307.69)
+        self.assertEqual(result["candidate_v3_target_1"], 340.0)
         self.assertEqual(result["candidate_v3_target_2"], 363.56)
+        self.assertEqual(result["candidate_v3_target_3"], 390.0)
         self.assertEqual(result["candidate_v3_decision"], "ENTER")
 
     def test_currency_and_spacing_variants_parse(self) -> None:
@@ -176,6 +180,30 @@ class LevelParsingTests(unittest.TestCase):
         result = evaluate_candidate_v3(_row(buy_zone="0 - 0"))
         self.assertEqual(result["candidate_v3_decision"], "WATCH")
         self.assertIn("WHERE_INCOMPLETE", result["candidate_v3_reason_codes"])
+
+
+class TargetLadderTests(unittest.TestCase):
+    def test_targets_are_published_as_an_ascending_ladder(self) -> None:
+        result = evaluate_candidate_v3(_row(
+            conservative_target="220.66", balanced_target="219.98", aggressive_target="223.89",
+            buy_zone="205.05 - 208.25", stop_loss="200.43", price=207.0,
+        ))
+        self.assertEqual(result["candidate_v3_target_1"], 219.98)
+        self.assertEqual(result["candidate_v3_target_2"], 220.66)
+        self.assertEqual(result["candidate_v3_target_3"], 223.89)
+
+    def test_targets_at_or_below_the_entry_zone_are_dropped(self) -> None:
+        result = evaluate_candidate_v3(_row(conservative_target="98.00"))
+        self.assertEqual(result["candidate_v3_target_1"], 108.0)
+        self.assertEqual(result["candidate_v3_target_2"], 115.0)
+        self.assertIsNone(result["candidate_v3_target_3"])
+        self.assertEqual(result["candidate_v3_decision"], "ENTER")
+
+    def test_duplicate_targets_collapse(self) -> None:
+        result = evaluate_candidate_v3(_row(conservative_target="108.00", balanced_target="108.00"))
+        self.assertEqual(result["candidate_v3_target_1"], 108.0)
+        self.assertEqual(result["candidate_v3_target_2"], 115.0)
+        self.assertIsNone(result["candidate_v3_target_3"])
 
 
 class WaitPullbackTests(unittest.TestCase):
