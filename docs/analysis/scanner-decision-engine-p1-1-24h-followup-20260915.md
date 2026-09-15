@@ -477,3 +477,49 @@ clean). **PROD WEB after: 6,530 → 5,387 KB (−1,143 KB); shockPattern blocks
 timing proof, similarity, reliability, false-alarm and volume-quality values;
 no NaN/undefined in the page text; PROD HOST smoke 200. **Cumulative today:
 9,011 → 5,387 KB (−40%)** in three isolated, measured commits.
+
+## 11. Window close (2026-09-15 14:10 UTC) — what changed after §0 was written
+
+Two things happened at the end of this window; both have their own reports.
+
+**(a) Step 1 of "next safe step" is done.** The market-calendar freshness test
+moved from the `mcal_*` shadow into the live severe list and is running in
+production: commit `ea3b849b`, image rebuilt with rollback tag
+`rollback-scanner-20260915-stale-mcal`, picked up by the 13:57 UTC fast-scan
+timer, first run on the new image 14:02 UTC (`scan_runs=1,
+scanner_signals=352`). The wall-clock answer survives as the diagnostic column
+`stale_by_wall_clock`. Full report:
+`docs/analysis/stale-data-market-calendar-production-fix-20260915.md`.
+
+The last three pre-open runs before the deploy (12:46, 13:01, 13:16 UTC) each
+carried **197 STALE_DATA vetoes against 0 market-calendar stale rows**, median
+data quality 65; the 14:02 run reads 0/0 with median 95. Tomorrow's pre-open
+window (11:30–13:30 UTC) is the acceptance test, because after the 13:30 open
+both clocks agree by construction.
+
+So §0's "next safe step" list advances by one: **(1) market-calendar freshness —
+shipped**; (2) completed-bar volume features into the breakout branch and the
+target-band rule into the live risk/reward — still shadow-measured, not shipped;
+(3) `SCANNER_DECISION_MODE=candidate` — still gated on ≥10 trading days of v2's
+own matured forward returns. Live mode remains `current`; nothing in this
+deploy touches a decision rule.
+
+**(b) A production resource alert was triaged first.** A `docker-memory`
+critical (94.37% vs 85.0) on the one-shot scanner job container was investigated
+before any rebuild. It is a real near-limit event, not a watchdog false
+positive: during the DB-write phase the job reaches 4096 MiB, 100.00% of its
+4 GiB limit, in ~25 seconds, with anonymous memory 371 → 4033 MiB while page
+cache is reclaimed to 2 MiB. No scan has failed, no OOM kill, host at 28.4 GB
+available with pressure 0 — but headroom is zero. Report and follow-ups
+(profile the write phase, raise `mem_limit` as a stopgap, teach the watchdog
+about `*-run-*` job containers, log peak RSS per run):
+`docs/ops/resource-alert-docker-memory-scanner-job-20260915.md`.
+
+**Health at window close.** Fast scans on the 15-minute timer, last run
+14:03:14 UTC exit 0; smoke all 200 (`/api/health`, `/api/health/deep`,
+`/terminal`, `/discover`, `/opportunities`, `/pricing`, `/account`, four
+`/symbol/*`), `/api/terminal/market-charts` 401 as designed; PROD WEB /terminal
+renders ENTER 0 / WATCH 34 / WAIT 7, "Data: Fresh", WAIT-first language intact;
+backups local and offsite `ok`; candidate v2 still shadow-only
+(`EXIT=217 WATCH=60 AVOID=54 WAIT_PULLBACK=20 ENTER=1`, band_ok=5), shadow ENTER
+counts 72 on 09-14 and 43 so far on 09-15 — day 2 of the 10-trading-day window.
