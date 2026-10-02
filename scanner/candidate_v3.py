@@ -81,6 +81,7 @@ V3_COLUMNS: Final[tuple[str, ...]] = (
     "candidate_v3_decision",
     "candidate_v3_setup_type",
     "candidate_v3_path",
+    "candidate_v3_core_eligible",
     "candidate_v3_reason_codes",
     "candidate_v3_confidence",
     "candidate_v3_entry_low",
@@ -110,6 +111,19 @@ class V3Config:
     breakout_min: float = 72.0
     breakout_volume_min: float = 55.0
     breakout_momentum_min: float = 60.0
+    #: The subset that was strongest in both studies; ranked above the rest.
+    breakout_high_conviction_min: float = 72.0
+    breakout_high_conviction_volume: float = 65.0
+    breakout_high_conviction_momentum: float = 68.0
+    #: The band-core path is OFF as an entry since 2026-10-02. It passed the
+    #: historical replay (5D median +0.40%, hit 53.9%) and then failed its own
+    #: live cohort over 2026-09-15..09-30: 47 rows, 21 symbols, 1D hit 47.2%,
+    #: 5D median -0.93% and hit 32.3%, with no filter (momentum, trend, avwap,
+    #: entry location, confidence, score sub-band, volume) rescuing it in live
+    #: data without breaking it in the historical set. Rows that clear the core
+    #: rules are still flagged `candidate_v3_core_eligible` so the cohort keeps
+    #: accruing forward returns and can be re-enabled on live evidence.
+    core_path_enabled: bool = False
     wait_rr_min: float = 1.2
     #: Pre-expansion is evidence, never a gate: the field did not exist for any
     #: row with matured returns, so no threshold on it can claim replay support.
@@ -297,11 +311,12 @@ def evaluate_candidate_v3(row: pd.Series, config: V3Config | None = None) -> dic
         codes.append("VOLUME_COMPLETED_BAR")
 
     def out(decision: str, why: str, *extra: str, path: str = "", why_wait: str = "",
-            confirmation: str = "", quality: float = 0.0) -> dict[str, object]:
+            confirmation: str = "", quality: float = 0.0, core_eligible: bool = False) -> dict[str, object]:
         return {
             "candidate_v3_decision": decision,
             "candidate_v3_setup_type": setup_type,
             "candidate_v3_path": path,
+            "candidate_v3_core_eligible": core_eligible,
             "candidate_v3_reason_codes": sorted(set(codes + list(extra))),
             "candidate_v3_confidence": None if np.isnan(effective) else round(float(effective), 2),
             "candidate_v3_entry_low": where["entry_low"],
@@ -356,6 +371,13 @@ def evaluate_candidate_v3(row: pd.Series, config: V3Config | None = None) -> dic
         )
         if breakout_ok:
             quality = _quality("BREAKOUT", effective, rr, row, settings)
+            if (
+                breakout >= settings.breakout_high_conviction_min
+                and volume >= settings.breakout_high_conviction_volume
+                and momentum >= settings.breakout_high_conviction_momentum
+            ):
+                codes.append("BREAKOUT_HIGH_CONVICTION")
+                quality += 5.0
             return out(
                 "ENTER",
                 f"Breakout with real participation: breakout {breakout:.0f}, completed-bar volume "
@@ -376,6 +398,20 @@ def evaluate_candidate_v3(row: pd.Series, config: V3Config | None = None) -> dic
         rr_ok = not np.isnan(rr) and rr >= settings.core_rr_min
         if band_ok and classified and confidence_ok and rr_ok:
             quality = _quality("CORE", effective, rr, row, settings)
+            if not settings.core_path_enabled:
+                # Kept visible, not acted on: the cohort failed its live test
+                # and keeps collecting forward returns under this flag.
+                return out(
+                    "WATCH",
+                    f"A {setup_type.lower()} setup in the entry zone that clears the band-core rules "
+                    f"(score {score:.0f}, confidence {confidence:.0f}, risk/reward {rr:.2f}), but that path "
+                    f"is suspended: its live cohort returned a 32% hit rate at 5D against a 54% baseline. "
+                    f"Tracked, not traded.",
+                    "BAND_CORE",
+                    "CORE_UNCONFIRMED_LIVE",
+                    core_eligible=True,
+                    quality=quality,
+                )
             return out(
                 "ENTER",
                 f"A {setup_type.lower()} setup with price in the entry zone: score {score:.0f} inside the "
@@ -385,6 +421,7 @@ def evaluate_candidate_v3(row: pd.Series, config: V3Config | None = None) -> dic
                 "BAND_CORE",
                 "IN_ENTRY_ZONE",
                 path="CORE",
+                core_eligible=True,
                 confirmation="Entry is live while price holds the zone; the trade is wrong below the stop.",
                 quality=quality,
             )
@@ -517,6 +554,9 @@ def candidate_v3_summary(df_rank: pd.DataFrame) -> dict[str, object]:
         if _where_complete(cleaned):
             where_complete += 1
     paths = enters["candidate_v3_path"].map(lambda value: safe_str(value, "")) if not enters.empty else pd.Series(dtype=str)
+    core_eligible = 0
+    if "candidate_v3_core_eligible" in df_rank.columns:
+        core_eligible = int(df_rank["candidate_v3_core_eligible"].fillna(False).astype(bool).sum())
     return {
         "rows": int(len(df_rank)),
         "by_decision": counts,
@@ -524,4 +564,5 @@ def candidate_v3_summary(df_rank: pd.DataFrame) -> dict[str, object]:
         "where_complete": int(where_complete),
         "enter_breakout": int((paths == "BREAKOUT").sum()) if len(paths) else 0,
         "enter_core": int((paths == "CORE").sum()) if len(paths) else 0,
+        "core_eligible": core_eligible,
     }

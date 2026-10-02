@@ -90,7 +90,7 @@ def ssh_script(script: str, *, timeout: int = 300, max_stdout: int = 60000) -> C
 #: Read-only bundles whose whole point is a bulk row dump for offline analysis.
 #: Everything else stays on the small cap so a runaway query cannot fill the
 #: result queue.
-LARGE_OUTPUT_QUERIES: Final[frozenset[str]] = frozenset({"v3_dataset"})
+LARGE_OUTPUT_QUERIES: Final[frozenset[str]] = frozenset({"v3_dataset", "v3_postfix_dataset"})
 
 
 def require_branch(args: dict[str, Any], default: str = "work/terminal-ia-simplification") -> str:
@@ -558,6 +558,112 @@ SELECT k, v FROM (
   UNION ALL SELECT 17,'completed field present', count(*)::text FROM g WHERE relative_volume_score_completed ~ '^[0-9.]+$'
   UNION ALL SELECT 18,'completed <> live', count(*)::text FROM g WHERE relative_volume_score_completed ~ '^[0-9.]+$' AND relative_volume_score_completed <> relative_volume_score
 ) t ORDER BY o;
+""",
+    "v3_enter_detail": r"""
+WITH j AS (
+  SELECT DISTINCT ON (x.symbol, fr.signal_date, fr.horizon)
+         x.symbol, fr.signal_date, fr.horizon, round(fr.return_pct::numeric*100,2) AS r,
+         coalesce(x.candidate_v3_path,'') AS path, coalesce(x.sector,'') AS sector,
+         coalesce(x.candidate_v3_confidence,'') AS conf, coalesce(x.final_score,'') AS score
+  FROM forward_returns fr
+  JOIN scanner_signals ss ON ss.id = fr.scanner_signal_id
+  JOIN scan_runs sr ON sr.id = ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(
+    symbol text, sector text, final_score text, candidate_v3_decision text,
+    candidate_v3_path text, candidate_v3_confidence text)
+  WHERE fr.return_pct IS NOT NULL AND x.candidate_v3_decision='ENTER'
+    AND sr.created_at >= timestamptz '2026-09-15 15:40:00+00'
+  ORDER BY x.symbol, fr.signal_date, fr.horizon, sr.created_at
+)
+SELECT horizon, signal_date, symbol, path, sector, score, conf, r FROM j ORDER BY horizon, signal_date, path, symbol;
+""",
+    "v3_horizons": r"""
+SELECT horizon, count(*) AS rows, min(signal_date) AS from_date, max(signal_date) AS to_date,
+       count(*) FILTER (WHERE return_pct IS NOT NULL) AS with_return
+FROM forward_returns WHERE signal_date >= date '2026-09-15' GROUP BY 1 ORDER BY 1;
+""",
+    "v3_postfix_dataset": r"""
+\pset format unaligned
+\pset fieldsep '|'
+\pset footer off
+WITH fr AS (
+  SELECT scanner_signal_id, min(signal_date) AS signal_date,
+         max(return_pct) FILTER (WHERE horizon='1D') AS r1,
+         max(return_pct) FILTER (WHERE horizon='2D') AS r2,
+         max(return_pct) FILTER (WHERE horizon='3D') AS r3,
+         max(return_pct) FILTER (WHERE horizon='5D') AS r5
+  FROM forward_returns WHERE return_pct IS NOT NULL AND signal_date >= date '2026-09-15' GROUP BY 1
+), j AS (
+  SELECT DISTINCT ON (x.symbol, fr.signal_date)
+         fr.signal_date, sr.created_at, fr.r1, fr.r2, fr.r3, fr.r5, ss.final_decision AS live, x.*
+  FROM fr JOIN scanner_signals ss ON ss.id = fr.scanner_signal_id
+  JOIN scan_runs sr ON sr.id = ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(
+    symbol text, sector text, asset_type text, setup_detail text, entry_status text,
+    composite_action text, final_score text, confidence_score text, risk_reward text,
+    balanced_risk_reward_low text, breakout_score text, breakout_score_completed text,
+    relative_volume_score text, relative_volume_score_completed text, momentum_score text,
+    trend_score text, avwap_score text, pre_expansion_score text, atr_pct text,
+    annualized_volatility text, vetoes jsonb,
+    candidate_v3_decision text, candidate_v3_path text, candidate_v3_setup_type text,
+    candidate_v3_confidence text, candidate_v3_rr text, candidate_v2_decision text)
+  WHERE sr.created_at >= timestamptz '2026-09-15 15:40:00+00'
+  ORDER BY x.symbol, fr.signal_date, sr.created_at
+)
+SELECT signal_date, to_char(created_at AT TIME ZONE 'UTC','HH24:MI') AS run_utc, symbol,
+       coalesce(sector,'') AS sector, coalesce(asset_type,'') AS asset_type,
+       coalesce(setup_detail,'') AS setup_detail, coalesce(entry_status,'') AS entry_status,
+       coalesce(composite_action,'') AS action, live,
+       coalesce(final_score,'') AS fs, coalesce(confidence_score,'') AS cs,
+       coalesce(risk_reward,'') AS rr, coalesce(balanced_risk_reward_low,'') AS brr,
+       coalesce(breakout_score_completed, breakout_score,'') AS brk,
+       coalesce(relative_volume_score_completed, relative_volume_score,'') AS vol,
+       coalesce(momentum_score,'') AS mom, coalesce(trend_score,'') AS trend,
+       coalesce(avwap_score,'') AS avwap, coalesce(pre_expansion_score,'') AS pre,
+       coalesce(atr_pct,'') AS atr, coalesce(annualized_volatility,'') AS avol,
+       CASE WHEN jsonb_typeof(vetoes)='array' THEN array_to_string(ARRAY(SELECT jsonb_array_elements_text(vetoes)),',') ELSE '' END AS vetoes,
+       coalesce(candidate_v3_decision,'') AS v3, coalesce(candidate_v3_path,'') AS path,
+       coalesce(candidate_v3_setup_type,'') AS shape, coalesce(candidate_v3_confidence,'') AS v3conf,
+       coalesce(candidate_v2_decision,'') AS v2,
+       r1, r2, r3, r5
+FROM j;
+""",
+    "v3_forward": r"""
+WITH j AS (
+  SELECT DISTINCT ON (x.symbol, fr.signal_date, fr.horizon)
+         x.symbol, fr.signal_date, fr.horizon, fr.return_pct::numeric AS r,
+         coalesce(x.candidate_v3_decision,'') AS v3,
+         coalesce(x.candidate_v3_path,'') AS path,
+         coalesce(x.candidate_v3_setup_type,'') AS shape,
+         ss.final_decision AS live
+  FROM forward_returns fr
+  JOIN scanner_signals ss ON ss.id = fr.scanner_signal_id
+  JOIN scan_runs sr ON sr.id = ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(
+    symbol text, candidate_v3_decision text, candidate_v3_path text, candidate_v3_setup_type text)
+  WHERE fr.return_pct IS NOT NULL AND fr.horizon IN ('1D','2D','3D','5D','10D','20D')
+    AND sr.created_at >= timestamptz '2026-09-15 15:40:00+00'
+  ORDER BY x.symbol, fr.signal_date, fr.horizon, sr.created_at
+), c AS (
+  SELECT 'A baseline (all v3-era rows)' AS cohort, * FROM j
+  UNION ALL SELECT 'B baseline non-sell', * FROM j WHERE v3 <> 'NO_ENTRY'
+  UNION ALL SELECT 'C v3 ENTER (all)', * FROM j WHERE v3='ENTER'
+  UNION ALL SELECT 'D v3 ENTER breakout', * FROM j WHERE v3='ENTER' AND path='BREAKOUT'
+  UNION ALL SELECT 'E v3 ENTER core', * FROM j WHERE v3='ENTER' AND path='CORE'
+  UNION ALL SELECT 'F v3 WAIT_PULLBACK', * FROM j WHERE v3='WAIT_PULLBACK'
+  UNION ALL SELECT 'G v3 WATCH', * FROM j WHERE v3='WATCH'
+  UNION ALL SELECT 'H v3 AVOID (severe)', * FROM j WHERE v3='AVOID'
+  UNION ALL SELECT 'I v3 NO_ENTRY (sell)', * FROM j WHERE v3='NO_ENTRY'
+  UNION ALL SELECT 'J live AVOID', * FROM j WHERE live='AVOID'
+  UNION ALL SELECT 'K v3 actionable but live AVOID', * FROM j WHERE v3 IN ('ENTER','WAIT_PULLBACK') AND live='AVOID'
+)
+SELECT cohort, horizon, count(*) AS n, count(DISTINCT signal_date) AS days, count(DISTINCT symbol) AS syms,
+       round(avg(r)*100,2) AS mean_pct,
+       round((percentile_cont(0.5) WITHIN GROUP (ORDER BY r))::numeric*100,2) AS med_pct,
+       round(100.0*count(*) FILTER (WHERE r>0)/count(*),1) AS win_pct,
+       round((percentile_cont(0.1) WITHIN GROUP (ORDER BY r))::numeric*100,2) AS p10_pct,
+       min(signal_date) AS from_date, max(signal_date) AS to_date
+FROM c GROUP BY cohort, horizon HAVING count(*) >= 5 ORDER BY cohort, horizon;
 """,
     "v3_actionable": r"""
 \pset format unaligned

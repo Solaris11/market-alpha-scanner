@@ -110,7 +110,10 @@ services:
         SCANNER_BUILD_TIME: ${SCANNER_BUILD_TIME:-unknown}
     restart: "no"
     cpus: "1.5"
-    mem_limit: 4g
+    # 6g since 2026-10-02: the one-shot scan job peaks at ~4 GiB for ~25 s in
+    # its DB-write phase (docs/ops/resource-alert-docker-memory-scanner-job-20260915.md),
+    # which left zero headroom and tripped the resource watchdog at 85%.
+    mem_limit: 6g
     security_opt:
       - no-new-privileges:true
     cap_drop:

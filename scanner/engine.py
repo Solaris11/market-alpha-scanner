@@ -607,7 +607,8 @@ def scan_symbols(
         print(
             f"[scanner] candidate_v3 rows={candidate_v3['rows']} {by_decision}"
             f" | actionable={candidate_v3['actionable']} where_complete={candidate_v3['where_complete']}"
-            f" | enter_breakout={candidate_v3['enter_breakout']} enter_core={candidate_v3['enter_core']}",
+            f" | enter_breakout={candidate_v3['enter_breakout']} enter_core={candidate_v3['enter_core']}"
+            f" core_eligible={candidate_v3.get('core_eligible', 0)}",
             flush=True,
         )
 

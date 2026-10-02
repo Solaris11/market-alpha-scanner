@@ -22,6 +22,9 @@ from scanner.candidate_v3 import (
 )
 
 
+CORE_ON = V3Config(core_path_enabled=True)
+
+
 def _row(**overrides: object) -> pd.Series:
     """A row that clears the band-core entry path, so each test can break
     exactly one thing and see the decision move."""
@@ -72,10 +75,21 @@ class SetupShapeTests(unittest.TestCase):
 
 
 class EnterPathTests(unittest.TestCase):
-    def test_band_core_enters_where_the_live_engine_avoids(self) -> None:
-        result = evaluate_candidate_v3(_row())
+    def test_band_core_is_tracked_but_suspended(self) -> None:
+        # The path passed the historical replay and then failed its own live
+        # cohort (5D hit 32.3% against a 54% baseline), so it is flagged and
+        # keeps accruing returns, but it is not an entry.
+        suspended = evaluate_candidate_v3(_row())
+        self.assertEqual(suspended["candidate_v3_decision"], "WATCH")
+        self.assertTrue(suspended["candidate_v3_core_eligible"])
+        self.assertIn("CORE_UNCONFIRMED_LIVE", suspended["candidate_v3_reason_codes"])
+        self.assertIn("BAND_CORE", suspended["candidate_v3_reason_codes"])
+
+    def test_band_core_enters_where_the_live_engine_avoids_when_re_enabled(self) -> None:
+        result = evaluate_candidate_v3(_row(), CORE_ON)
         self.assertEqual(result["candidate_v3_decision"], "ENTER")
         self.assertEqual(result["candidate_v3_path"], "CORE")
+        self.assertTrue(result["candidate_v3_core_eligible"])
         self.assertEqual(result["candidate_v3_setup_type"], "PULLBACK")
         self.assertIn("BAND_CORE", result["candidate_v3_reason_codes"])
         self.assertEqual(result["candidate_v3_entry_low"], 97.0)
@@ -88,21 +102,24 @@ class EnterPathTests(unittest.TestCase):
         self.assertEqual(result["candidate_v3_invalidation"], "94.00")
 
     def test_score_above_the_band_is_not_an_entry(self) -> None:
-        result = evaluate_candidate_v3(_row(final_score=88.0))
+        result = evaluate_candidate_v3(_row(final_score=88.0), CORE_ON)
         self.assertEqual(result["candidate_v3_decision"], "WATCH")
         self.assertIn("ABOVE_ENTRY_BAND", result["candidate_v3_reason_codes"])
+        self.assertFalse(result["candidate_v3_core_eligible"])
 
     def test_score_floor_of_the_live_engine_is_not_reintroduced(self) -> None:
-        # 62 would fail the live engine's >= 80 floor; v3 enters on it.
-        self.assertEqual(evaluate_candidate_v3(_row(final_score=62.0))["candidate_v3_decision"], "ENTER")
+        # 62 would fail the live engine's >= 80 floor; the band core still
+        # recognises it, and enters on it whenever the path is enabled.
+        self.assertTrue(evaluate_candidate_v3(_row(final_score=62.0))["candidate_v3_core_eligible"])
+        self.assertEqual(evaluate_candidate_v3(_row(final_score=62.0), CORE_ON)["candidate_v3_decision"], "ENTER")
 
     def test_confidence_below_the_core_floor_watches(self) -> None:
-        result = evaluate_candidate_v3(_row(confidence_score=68.0))
+        result = evaluate_candidate_v3(_row(confidence_score=68.0), CORE_ON)
         self.assertEqual(result["candidate_v3_decision"], "WATCH")
         self.assertIn("LOW_CONFIDENCE", result["candidate_v3_reason_codes"])
 
     def test_balanced_rr_below_the_floor_watches(self) -> None:
-        result = evaluate_candidate_v3(_row(balanced_risk_reward_low=1.1))
+        result = evaluate_candidate_v3(_row(balanced_risk_reward_low=1.1), CORE_ON)
         self.assertEqual(result["candidate_v3_decision"], "WATCH")
         self.assertIn("RR_BELOW_FLOOR", result["candidate_v3_reason_codes"])
 
@@ -137,12 +154,12 @@ class EnterPathTests(unittest.TestCase):
 
     def test_every_enter_is_where_complete(self) -> None:
         for missing in ("buy_zone", "stop_loss"):
-            result = evaluate_candidate_v3(_row(**{missing: ""}))
+            result = evaluate_candidate_v3(_row(**{missing: ""}), CORE_ON)
             self.assertEqual(result["candidate_v3_decision"], "WATCH", missing)
             self.assertIn("WHERE_INCOMPLETE", result["candidate_v3_reason_codes"], missing)
 
     def test_stop_above_the_entry_zone_is_not_where_complete(self) -> None:
-        result = evaluate_candidate_v3(_row(stop_loss="99.00"))
+        result = evaluate_candidate_v3(_row(stop_loss="99.00"), CORE_ON)
         self.assertEqual(result["candidate_v3_decision"], "WATCH")
         self.assertIn("WHERE_INCOMPLETE", result["candidate_v3_reason_codes"])
 
@@ -161,7 +178,7 @@ class LevelParsingTests(unittest.TestCase):
             conservative_target="340.00",
             balanced_target="363.56-374.74",
             aggressive_target="390.00",
-        ))
+        ), CORE_ON)
         self.assertEqual(result["candidate_v3_entry_low"], 318.58)
         self.assertEqual(result["candidate_v3_entry_high"], 323.99)
         self.assertEqual(result["candidate_v3_stop"], 307.69)
@@ -172,12 +189,12 @@ class LevelParsingTests(unittest.TestCase):
 
     def test_currency_and_spacing_variants_parse(self) -> None:
         for zone in ("$97.00 - $99.50", "97.00 to 99.50", "97.00-99.50"):
-            result = evaluate_candidate_v3(_row(buy_zone=zone))
+            result = evaluate_candidate_v3(_row(buy_zone=zone), CORE_ON)
             self.assertEqual(result["candidate_v3_entry_low"], 97.0, zone)
             self.assertEqual(result["candidate_v3_entry_high"], 99.5, zone)
 
     def test_non_positive_levels_are_not_where_complete(self) -> None:
-        result = evaluate_candidate_v3(_row(buy_zone="0 - 0"))
+        result = evaluate_candidate_v3(_row(buy_zone="0 - 0"), CORE_ON)
         self.assertEqual(result["candidate_v3_decision"], "WATCH")
         self.assertIn("WHERE_INCOMPLETE", result["candidate_v3_reason_codes"])
 
@@ -187,20 +204,20 @@ class TargetLadderTests(unittest.TestCase):
         result = evaluate_candidate_v3(_row(
             conservative_target="220.66", balanced_target="219.98", aggressive_target="223.89",
             buy_zone="205.05 - 208.25", stop_loss="200.43", price=207.0,
-        ))
+        ), CORE_ON)
         self.assertEqual(result["candidate_v3_target_1"], 219.98)
         self.assertEqual(result["candidate_v3_target_2"], 220.66)
         self.assertEqual(result["candidate_v3_target_3"], 223.89)
 
     def test_targets_at_or_below_the_entry_zone_are_dropped(self) -> None:
-        result = evaluate_candidate_v3(_row(conservative_target="98.00"))
+        result = evaluate_candidate_v3(_row(conservative_target="98.00"), CORE_ON)
         self.assertEqual(result["candidate_v3_target_1"], 108.0)
         self.assertEqual(result["candidate_v3_target_2"], 115.0)
         self.assertIsNone(result["candidate_v3_target_3"])
         self.assertEqual(result["candidate_v3_decision"], "ENTER")
 
     def test_duplicate_targets_collapse(self) -> None:
-        result = evaluate_candidate_v3(_row(conservative_target="108.00", balanced_target="108.00"))
+        result = evaluate_candidate_v3(_row(conservative_target="108.00", balanced_target="108.00"), CORE_ON)
         self.assertEqual(result["candidate_v3_target_1"], 108.0)
         self.assertEqual(result["candidate_v3_target_2"], 115.0)
         self.assertIsNone(result["candidate_v3_target_3"])
@@ -234,7 +251,9 @@ class VetoSeverityTests(unittest.TestCase):
             self.assertIn(f"SEVERE_{code}", result["candidate_v3_reason_codes"], code)
 
     def test_advisory_vetoes_cost_confidence_and_do_not_block(self) -> None:
-        result = evaluate_candidate_v3(_row(confidence_score=85.0, vetoes=["HIGH_VOLATILITY", "OVEREXTENDED_ENTRY"]))  # noqa: E501
+        result = evaluate_candidate_v3(
+            _row(confidence_score=85.0, vetoes=["HIGH_VOLATILITY", "OVEREXTENDED_ENTRY"]), CORE_ON
+        )
         self.assertEqual(result["candidate_v3_decision"], "ENTER")
         self.assertEqual(result["candidate_v3_confidence"], 77.0)
         self.assertIn("ADVISORY_HIGH_VOLATILITY", result["candidate_v3_reason_codes"])
@@ -242,18 +261,18 @@ class VetoSeverityTests(unittest.TestCase):
     def test_advisory_penalty_never_costs_an_entry(self) -> None:
         # The replay grid measured raw confidence, so the gate reads the raw
         # score; the advisory cost shows up in the reported number and in rank.
-        result = evaluate_candidate_v3(_row(confidence_score=76.0, vetoes=["HIGH_VOLATILITY"]))
+        result = evaluate_candidate_v3(_row(confidence_score=76.0, vetoes=["HIGH_VOLATILITY"]), CORE_ON)
         self.assertEqual(result["candidate_v3_decision"], "ENTER")
         self.assertEqual(result["candidate_v3_confidence"], 72.0)
         self.assertIn("ADVISORY_HIGH_VOLATILITY", result["candidate_v3_reason_codes"])
 
     def test_raw_confidence_below_the_floor_still_watches(self) -> None:
-        result = evaluate_candidate_v3(_row(confidence_score=74.0, vetoes=["HIGH_VOLATILITY"]))
+        result = evaluate_candidate_v3(_row(confidence_score=74.0, vetoes=["HIGH_VOLATILITY"]), CORE_ON)
         self.assertEqual(result["candidate_v3_decision"], "WATCH")
         self.assertIn("LOW_CONFIDENCE", result["candidate_v3_reason_codes"])
 
     def test_poor_risk_reward_is_re_decided_on_the_balanced_target(self) -> None:
-        good = evaluate_candidate_v3(_row(vetoes=["POOR_RISK_REWARD"], balanced_risk_reward_low=2.0))
+        good = evaluate_candidate_v3(_row(vetoes=["POOR_RISK_REWARD"], balanced_risk_reward_low=2.0), CORE_ON)
         self.assertEqual(good["candidate_v3_decision"], "ENTER")
         self.assertIn("ADVISORY_POOR_RISK_REWARD_NEAREST_RESISTANCE", good["candidate_v3_reason_codes"])
         bad = evaluate_candidate_v3(_row(vetoes=["POOR_RISK_REWARD"], balanced_risk_reward_low=0.9, risk_reward=0.6))
@@ -293,23 +312,34 @@ class FrameTests(unittest.TestCase):
         self.assertEqual(list(out["final_decision"].unique()), ["AVOID"])
         self.assertNotIn("_v3_quality", out.columns)
 
-    def test_ranking_puts_entries_first_and_breakout_ahead_of_the_band_core(self) -> None:
+    def test_ranking_puts_entries_first_and_the_suspended_core_nowhere(self) -> None:
         out = apply_candidate_v3(self._frame()).set_index("symbol")
+        self.assertEqual(out.loc["BRK", "candidate_v3_actionability_rank"], 1)
+        self.assertEqual(out.loc["LATE", "candidate_v3_actionability_rank"], 2)
+        self.assertEqual(out.loc["CORE", "candidate_v3_actionability_rank"], 0)
+        self.assertTrue(out.loc["CORE", "candidate_v3_core_eligible"])
+        self.assertEqual(out.loc["SELL", "candidate_v3_actionability_rank"], 0)
+        self.assertEqual(out.loc["STALE", "candidate_v3_actionability_rank"], 0)
+        self.assertIn("Rank 1 of 2", out.loc["BRK", "candidate_v3_capital_rank_reason"])
+        self.assertIn("66.8%", out.loc["BRK", "candidate_v3_capital_rank_reason"])
+
+    def test_ranking_with_the_core_path_re_enabled(self) -> None:
+        out = apply_candidate_v3(self._frame(), CORE_ON).set_index("symbol")
         self.assertEqual(out.loc["BRK", "candidate_v3_actionability_rank"], 1)
         self.assertEqual(out.loc["CORE", "candidate_v3_actionability_rank"], 2)
         self.assertEqual(out.loc["LATE", "candidate_v3_actionability_rank"], 3)
-        self.assertEqual(out.loc["SELL", "candidate_v3_actionability_rank"], 0)
-        self.assertEqual(out.loc["STALE", "candidate_v3_actionability_rank"], 0)
-        self.assertIn("Rank 1 of 3", out.loc["BRK", "candidate_v3_capital_rank_reason"])
-        self.assertIn("66.8%", out.loc["BRK", "candidate_v3_capital_rank_reason"])
 
     def test_summary_counts_paths_and_where_completeness(self) -> None:
         summary = candidate_v3_summary(apply_candidate_v3(self._frame()))
         self.assertEqual(summary["rows"], 5)
-        self.assertEqual(summary["actionable"], 3)
-        self.assertEqual(summary["where_complete"], 3)
+        self.assertEqual(summary["actionable"], 2)      # breakout entry + wait
+        self.assertEqual(summary["where_complete"], 2)
         self.assertEqual(summary["enter_breakout"], 1)
-        self.assertEqual(summary["enter_core"], 1)
+        self.assertEqual(summary["enter_core"], 0)      # path suspended
+        self.assertEqual(summary["core_eligible"], 1)   # still tracked
+        enabled = candidate_v3_summary(apply_candidate_v3(self._frame(), CORE_ON))
+        self.assertEqual(enabled["enter_core"], 1)
+        self.assertEqual(enabled["actionable"], 3)
         self.assertEqual(summary["by_decision"]["NO_ENTRY"], 1)
         self.assertEqual(summary["by_decision"]["AVOID"], 1)
 
@@ -321,7 +351,7 @@ class FrameTests(unittest.TestCase):
 
 class ConfigTests(unittest.TestCase):
     def test_thresholds_are_configurable_without_touching_the_rules(self) -> None:
-        strict = V3Config(core_confidence_min=95.0)
+        strict = V3Config(core_confidence_min=95.0, core_path_enabled=True)
         self.assertEqual(evaluate_candidate_v3(_row(), strict)["candidate_v3_decision"], "WATCH")
         loose = V3Config(breakout_volume_min=10.0, breakout_momentum_min=10.0, breakout_min=10.0)
         self.assertEqual(evaluate_candidate_v3(_row(), loose)["candidate_v3_path"], "BREAKOUT")
