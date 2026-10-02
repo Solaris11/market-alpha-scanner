@@ -329,6 +329,34 @@ echo "== scanner-job containers now =="; docker ps -a --filter name=market-alpha
     return [ssh_script(script, timeout=210)]
 
 
+#: Containers the monitor may restart when they report unhealthy or
+#: restarting. Postgres is deliberately absent: a database restart is an
+#: availability event and a human decision, never an automated remedy.
+RESTARTABLE_CONTAINERS: Final[frozenset[str]] = frozenset(
+    {"market-alpha-frontend", "market-alpha-frontend-hot-api"}
+)
+
+
+def action_prod_restart_container(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
+    """Restart one allowlisted application container. Reversible, scoped, and
+    refused for anything stateful. Requires an explicit confirm string so a
+    restart is never a side effect of a typo."""
+    name = str(args.get("container") or "")
+    if name not in RESTARTABLE_CONTAINERS:
+        raise RelayError(f"container not restartable: {name!r}; allowed: {sorted(RESTARTABLE_CONTAINERS)}")
+    if args.get("confirm") != "restart application container":
+        raise RelayError('prod_restart_container requires args.confirm = "restart application container"')
+    script = f"""
+set +e
+echo "== before =="; docker inspect -f '{{{{.Name}}}} status={{{{.State.Status}}}} health={{{{if .State.Health}}}}{{{{.State.Health.Status}}}}{{{{else}}}}none{{{{end}}}} restarts={{{{.RestartCount}}}} started={{{{.State.StartedAt}}}}' {shlex.quote(name)} 2>&1
+docker restart {shlex.quote(name)} 2>&1
+sleep 12
+echo "== after =="; docker inspect -f '{{{{.Name}}}} status={{{{.State.Status}}}} health={{{{if .State.Health}}}}{{{{.State.Health.Status}}}}{{{{else}}}}none{{{{end}}}} restarts={{{{.RestartCount}}}} started={{{{.State.StartedAt}}}}' {shlex.quote(name)} 2>&1
+echo "== logs tail =="; docker logs --tail 30 {shlex.quote(name)} 2>&1 | grep -vE 'Failed download|quoteSummary' | tail -20
+"""
+    return [ssh_script(script, timeout=120)]
+
+
 def action_prod_db_read(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
     query_name = str(args.get("query") or "audit_summary")
     if query_name not in DB_QUERIES:
@@ -1240,6 +1268,7 @@ ACTIONS: dict[str, Callable[[Path, dict[str, Any]], list[CommandResult]]] = {
     "prod_docker_inspect_container": action_prod_docker_inspect_container,
     "prod_watchdog_source": action_prod_watchdog_source,
     "prod_scanner_job_watch": action_prod_scanner_job_watch,
+    "prod_restart_container": action_prod_restart_container,
     "prod_scanner_build": action_prod_scanner_build,
     "prod_smoke": action_prod_smoke,
     "prod_ssh_probe": action_prod_ssh_probe,
